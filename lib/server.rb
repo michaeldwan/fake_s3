@@ -38,7 +38,7 @@ module FakeS3
             x.Contents do
               x.Key file["filename"]
               x.LastModified file["uploadDate"]
-              x.ETag "fba9dede5fakec9771645a39863328"
+              x.ETag file["md5"]
               x.StorageClass "Fake"
               x.Owner do
                 x.ID "OWNERID"
@@ -55,7 +55,13 @@ module FakeS3
       bucket = params[:bucket]
       
       file = grid.get(sha([bucket, filename]))
-      headers "Server" => "FakeS3"
+      headers "Server" => "FakeS3",
+              "Date" => Time.now.utc.to_s,
+              "Etag" => file["md5"],
+              "Last-Modified" => file["uploadDate"].to_s,
+              "Age" => (Time.now - file["uploadDate"]).round.to_s,
+              "Cache-Control" => "Public",
+              "Expires" => (file["uploadDate"] + 315576000).to_s
 
       content_type file.content_type
     end
