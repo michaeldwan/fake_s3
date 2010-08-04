@@ -5,6 +5,14 @@ module FakeS3
     db = Mongo::Connection.new.db('s5')
     grid = Mongo::Grid.new(db)
 
+    configure :production do
+      set :dump_errors, false 
+    end
+
+    error Mongo::GridFileNotFound do
+      not_found
+    end
+
     get '/' do
       'Welcome to FakeS3!'
     end
