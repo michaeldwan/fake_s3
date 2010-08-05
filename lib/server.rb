@@ -94,6 +94,7 @@ module FakeS3
       grid.put(file.read,
         :_id => id,
         :filename => filename,
+        :content_type => env["CONTENT_TYPE"],
         :metadata => {
           :bucket => params[:bucket]
         }
