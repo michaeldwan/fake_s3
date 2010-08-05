@@ -17,6 +17,17 @@ module FakeS3
       'Welcome to FakeS3!'
     end
 
+    get "/admin" do
+      "#{db["fs.files"].count()} files"
+    end
+
+    get "/admin/clear" do
+      db["fs.files"].remove()
+      db["fs.chunks"].remove()
+      redirect "/admin"
+    end
+
+
     get '/:bucket' do
       content_type "application/xml"
       
@@ -62,7 +73,7 @@ module FakeS3
       filename = params[:splat].first
       bucket = params[:bucket]
       
-      file = grid.get(sha([bucket, filename]))
+      file = grid.get(sha([bucket, filename].join('/')))
       headers "Server" => "FakeS3",
               "Date" => Time.now.utc.to_s,
               "Etag" => file["md5"],
@@ -78,7 +89,7 @@ module FakeS3
       filename = params[:splat].first
       bucket = params[:bucket]
       headers "Server" => "FakeS3"
-      file = grid.get(sha([bucket, filename]))
+      file = grid.get(sha([bucket, filename].join('/')))
       content_type file.content_type
       file.read
     end
@@ -86,15 +97,24 @@ module FakeS3
     put "/:bucket/*" do
       filename = params[:splat].first
       bucket = params[:bucket]
-      id = sha([bucket, filename])
-      file = request.body
+      id = sha([bucket, filename].join('/'))
+      
+      content_type = env["CONTENT_TYPE"]
+      
+      file = if env["HTTP_X_AMZ_COPY_SOURCE"]
+        f = grid.get(sha(env["HTTP_X_AMZ_COPY_SOURCE"][1..256]))
+        content_type = f.content_type
+        f
+      else
+        request.body
+      end
 
       grid.delete(id)
 
       grid.put(file.read,
         :_id => id,
         :filename => filename,
-        :content_type => env["CONTENT_TYPE"],
+        :content_type => content_type,
         :metadata => {
           :bucket => params[:bucket]
         }
